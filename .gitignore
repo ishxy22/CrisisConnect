@@ -1,0 +1,6 @@
+target/
+help.md
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+.vscode/
+*.class

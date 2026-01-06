@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crisis Connect | Live Dashboard</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- 1. PREMIUM THEME --- */
+        :root {
+            --bg-dark: #09090b;
+            --glass-panel: rgba(20, 20, 25, 0.75);
+            --border-light: rgba(255, 255, 255, 0.1);
+
+            --brand-red: #ff4757;
+            --brand-blue: #2ed573;
+            --brand-orange: #ffa502;
+
+            --text-main: #ffffff;
+            --text-sub: #a4b0be;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            background: var(--bg-dark);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* --- 2. MAP (Clean Dark Mode) --- */
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* --- 3. FLOATING GLASS SIDEBAR --- */
+        #sidebar {
+            position: relative;
+            z-index: 100;
+            width: 400px;
+            height: 94vh;
+            margin: 3vh 0 0 3vh;
+
+            background: var(--glass-panel);
+            backdrop-filter: blur(25px);
+            /* Heavy Blur for Premium Feel */
+            -webkit-backdrop-filter: blur(25px);
+
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 25px;
+            border-bottom: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        h2 {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 26px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--brand-red);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--brand-red);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Content */
+        .content {
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Inputs */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-light);
+            color: white;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-submit {
+            flex: 2;
+            background: var(--brand-red);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-gps {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-gps:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Feed List */
+        .feed-title {
+            font-size: 12px;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .alert-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .alert-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            transform: translateY(-2px);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .card-name {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-sub);
+            line-height: 1.4;
+        }
+
+        /* Priority Badges */
+        .badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .badge.critical {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--brand-red);
+        }
+
+        .badge.moderate {
+            background: rgba(255, 165, 2, 0.2);
+            color: var(--brand-orange);
+        }
+
+        .badge.low {
+            background: rgba(46, 213, 115, 0.2);
+            color: var(--brand-blue);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <div class="header">
+            <h2>
+                <div class="live-dot"></div> CRISIS CONNECT
+            </h2>
+        </div>
+
+        <div class="content">
+            <div class="input-group">
+                <label>Reporter Name</label>
+                <input type="text" id="name" placeholder="Who is reporting?">
+            </div>
+
+            <div class="input-group">
+                <label>Contact</label>
+                <input type="text" id="phone" placeholder="Emergency Number">
+            </div>
+
+            <div class="input-group">
+                <label>Urgency Level</label>
+                <select id="priority">
+                    <option value="[CRITICAL]">🔴 Critical </option>
+                    <option value="[MODERATE]">🟠 Moderate </option>
+                    <option value="[LOW]">🟢 Low </option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Situation Report</label>
+                <textarea id="desc" rows="2" placeholder="Describe the incident..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label>Location </label>
+                <input type="text" id="location" placeholder="Select on Map or use GPS" readonly>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn-gps" onclick="getMyLocation()"><i class="fa-solid fa-location-crosshairs"></i>
+                    GPS</button>
+                <button class="btn-submit" onclick="submitRequest()">SEND ALERT</button>
+            </div>
+
+            <div class="feed-title">RECENT INCIDENTS</div>
+            <div id="alerts-list">
+                <div style="text-align:center; padding:20px; color:#555; font-size:13px;">Scanning live feed...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. SETUP MAP (Clean Dark Mode)
+        var map = L.map('map', { zoomControl: false }).setView([19.0760, 72.8777], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO'
+        }).addTo(map);
+
+        var alertLayer = L.layerGroup().addTo(map);
+        var currentSelectionMarker = null;
+
+        // 2. CLICK SELECTION (Elegant Blue Pin)
+        map.on('click', function (e) {
+            setSelection(e.latlng.lat, e.latlng.lng);
+        });
+
+        function setSelection(lat, lng) {
+            document.getElementById('location').value = lat.toFixed(5) + ", " + lng.toFixed(5);
+
+            if (currentSelectionMarker) map.removeLayer(currentSelectionMarker);
+
+            // Standard nice blue marker for selection
+            currentSelectionMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup("Selected Location").openPopup();
+        }
+
+        // 3. GPS FUNCTION
+        function getMyLocation() {
+            var btn = document.querySelector('.btn-gps');
+            var oldText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    var lat = pos.coords.latitude;
+                    var lng = pos.coords.longitude;
+                    map.flyTo([lat, lng], 16);
+                    setSelection(lat, lng);
+                    btn.innerHTML = oldText;
+                }, () => {
+                    alert("GPS Access Denied");
+                    btn.innerHTML = oldText;
+                });
+            } else {
+                alert("GPS Not Supported");
+                btn.innerHTML = oldText;
+            }
+        }
+
+        // 4. SUBMIT REQUEST (The Logic you asked for)
+        function submitRequest() {
+            var priority = document.getElementById('priority').value;
+            var desc = document.getElementById('desc').value;
+
+            // Combine Priority Tag with Description
+            var finalDesc = priority + " " + desc;
+
+            var data = {
+                name: document.getElementById('name').value,
+                phoneNumber: document.getElementById('phone').value,
+                description: finalDesc,
+                location: document.getElementById('location').value,
+                status: "PENDING"
+            };
+
+            // Button Feedback Animation
+            var btn = document.querySelector('.btn-submit');
+            var originalText = btn.innerText;
+            btn.innerText = "Sending...";
+            btn.style.opacity = "0.7";
+
+            fetch('http://localhost:8080/api/crisis/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    // --- CRITICAL VISUAL FIX ---
+                    // Remove the Blue "Selection" Pin so the Red "Alert" Dot is visible
+                    if (currentSelectionMarker) {
+                        map.removeLayer(currentSelectionMarker);
+                        currentSelectionMarker = null;
+                    }
+
+                    loadRequests(); // Refresh the feed
+                    document.getElementById('desc').value = ""; // Clear text
+
+                    // Reset Button
+                    btn.innerText = "Alert Sent ✓";
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.style.opacity = "1";
+                    }, 2000);
+                });
+        }
+
+        // 5. LOAD FEED & DRAW DOTS (Premium Visuals)
+        function loadRequests() {
+            fetch('http://localhost:8080/api/crisis/all')
+                .then(res => res.json())
+                .then(data => {
+                    var list = document.getElementById('alerts-list');
+                    list.innerHTML = "";
+                    alertLayer.clearLayers(); // Wipe map clean before drawing
+
+                    data.reverse(); // Show newest on top
+
+                    data.forEach(req => {
+                        // Default Styling (Low)
+                        var color = "#2ed573"; // Brand Green
+                        var radius = 8;
+                        var badgeClass = "low";
+                        var badgeText = "LOW";
+
+                        // Detect Priority
+                        if (req.description.includes("[CRITICAL]")) {
+                            color = "#ff4757";   // Brand Red
+                            radius = 18;         // Large Dot
+                            badgeClass = "critical";
+                            badgeText = "CRITICAL";
+                        } else if (req.description.includes("[MODERATE]")) {
+                            color = "#ffa502";   // Brand Orange
+                            badgeClass = "moderate";
+                            badgeText = "MODERATE";
+                        }
+
+                        // Clean the description text (hide the tag from the UI card)
+                        var displayDesc = req.description.replace(/\[.*?\]/, '').trim();
+
+                        // A. Add Card to Sidebar (Clean Apple-style design)
+                        list.innerHTML += `
+                        <div class="alert-card" onclick="flyTo(${req.location})">
+                            <div class="card-top">
+                                <span class="card-name">${req.name}</span>
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                            <div class="card-desc">${displayDesc || req.description}</div>
+                            <div style="font-size:10px; color:#555; margin-top:8px;">
+                                <i class="fa-solid fa-location-dot"></i> ${req.location}
+                            </div>
+                        </div>
+                    `;
+
+                        // B. Draw Glowing Dot on Map
+                        if (req.location) {
+                            var loc = req.location.split(',');
+                            if (loc.length === 2) {
+                                L.circleMarker([loc[0], loc[1]], {
+                                    color: color,       // Solid Border
+                                    fillColor: color,   // Filled Center
+                                    fillOpacity: 0.6,   // Premium Glow Effect
+                                    radius: radius,
+                                    weight: 2
+                                }).addTo(alertLayer).bindPopup(`<b>${req.name}</b><br>${displayDesc}`);
+                            }
+                        }
+                    });
+                });
+        }
+
+        function flyTo(lat, lng) {
+            map.flyTo([lat, lng], 16);
+        }
+
+        // Start the system
+        loadRequests();
+    </script>
+</body>
+
+</html>
